@@ -1,0 +1,61 @@
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DATABASE_NAME:-cats}
+      MYSQL_USER: ${DATABASE_USER:?Set DATABASE_USER in the environment file}
+      MYSQL_PASSWORD: ${DATABASE_PASS:?Set DATABASE_PASS in the environment file}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the environment file}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/cats_schema.sql:/docker-entrypoint-initdb.d/01-cats_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - backend
+
+  app:
+    image: ${ATS_IMAGE:-tbhrc-ats:local}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.production
+    restart: unless-stopped
+    environment:
+      DATABASE_HOST: db
+      DATABASE_NAME: ${DATABASE_NAME:-cats}
+      DATABASE_USER: ${DATABASE_USER:?Set DATABASE_USER in the environment file}
+      DATABASE_PASS: ${DATABASE_PASS:?Set DATABASE_PASS in the environment file}
+      SSL_ENABLED: ${SSL_ENABLED:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - app_data:/var/www/public
+    ports:
+      - "127.0.0.1:${APP_PORT:-3011}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/index.php"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - frontend
+      - backend
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  mysql_data:
+  # Holds the whole app tree at runtime (seeded once from the built image by
+  # the entrypoint) so wizard-written state -- INSTALL_BLOCK, attachments,
+  # temp -- survives `--force-recreate`, not just a rebuild.
+  app_data:

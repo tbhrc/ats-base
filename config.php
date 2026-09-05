@@ -15,11 +15,14 @@ if( !defined('LEGACY_ROOT') )
     define('LEGACY_ROOT', '.');
 }
 
-/* Database configuration. */
-define('DATABASE_USER', 'dev');
-define('DATABASE_PASS', 'dev');
-define('DATABASE_HOST', 'opencatsdb');
-define('DATABASE_NAME', 'cats_test');
+/* Database configuration. Read from environment at container start so no
+ * production secret is ever committed to this file (Talent Bridge deployment
+ * requirement -- see 700-architecture/hire-gnome-primary-ats-transition.md
+ * Section 2). Falls back to the upstream dev defaults for local/dev use. */
+define('DATABASE_USER', getenv('DATABASE_USER') ?: 'dev');
+define('DATABASE_PASS', getenv('DATABASE_PASS') ?: 'dev');
+define('DATABASE_HOST', getenv('DATABASE_HOST') ?: 'opencatsdb');
+define('DATABASE_NAME', getenv('DATABASE_NAME') ?: 'cats_test');
 
 /* Authentication Configuration
  * Options are sql and ldap
@@ -30,7 +33,7 @@ define ('AUTH_MODE', 'sql');
 define('PARSING_ENABLED', false);
 
 /* If you have an SSL compatible server, you can enable SSL for all of CATS. */
-define('SSL_ENABLED', false);
+define('SSL_ENABLED', getenv('SSL_ENABLED') ? filter_var(getenv('SSL_ENABLED'), FILTER_VALIDATE_BOOLEAN) : false);
 
 /* Text parser settings. Remember to use double backslashes (\) to represent
  * one backslash (\). On Windows, installing in C:\antiword\ is
@@ -172,8 +175,12 @@ define('DEMO_PASSWORD',  'john99');
  * 1: PHP Built-In Mail Support
  * 2: Sendmail
  * 3: SMTP
+ *
+ * Outbound email stays disabled until separately approved (Talent Bridge
+ * requirement -- 700-architecture/hire-gnome-primary-ats-transition.md
+ * Section 12).
  */
-define('MAIL_MAILER', 3);
+define('MAIL_MAILER', 0);
 
 /* Sendmail Settings. You don't need to worry about this unless MAIL_MAILER
  * is set to 2.
