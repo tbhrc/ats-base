@@ -16,3 +16,6 @@ test/screenshots/
 .phpunit.result.cache
 *.diff
 *.rej
+adapter/migrate/raw_import.csv
+adapter/migrate/raw_gulftalent.csv
+adapter/migrate/candidates.csv
