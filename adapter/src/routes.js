@@ -95,19 +95,33 @@ router.get('/candidates/:id', async (req, res) => {
 // the Candidate (Section 5's own gap-handling rule: native field where it
 // exists -- `source` -- custom fields for the rest).
 router.post('/candidates', async (req, res) => {
-  const { firstName, lastName, email, phone, source, sourceRef, sourceProfileUrl, sourceCandidateId, notes } = req.body;
+  const {
+    firstName, lastName, email, phone, source, sourceRef, sourceProfileUrl, sourceCandidateId, notes,
+    city, country, currentEmployer, desiredPay, currentPay, extraFields,
+  } = req.body;
   if (!firstName || !lastName) return res.status(400).json({ error: 'firstName and lastName are required' });
 
   const [result] = await pool.execute(
-    `INSERT INTO candidate (first_name, last_name, email1, phone_cell, source, notes, date_created, date_modified, entered_by)
-     VALUES (:firstName, :lastName, :email, :phone, :source, :notes, NOW(), NOW(), 0)`,
-    { firstName, lastName, email: email || null, phone: phone || null, source: source || null, notes: notes || null }
+    `INSERT INTO candidate (first_name, last_name, email1, phone_cell, source, notes, city, country, current_employer, desired_pay, current_pay, date_created, date_modified, entered_by)
+     VALUES (:firstName, :lastName, :email, :phone, :source, :notes, :city, :country, :currentEmployer, :desiredPay, :currentPay, NOW(), NOW(), 0)`,
+    {
+      firstName, lastName, email: email || null, phone: phone || null, source: source || null, notes: notes || null,
+      city: city || null, country: country || null, currentEmployer: currentEmployer || null,
+      desiredPay: desiredPay || null, currentPay: currentPay || null,
+    }
   );
   const candidateId = result.insertId;
 
   if (sourceRef) await upsertExtraField(DATA_ITEM_CANDIDATE, candidateId, 'source_ref', sourceRef);
   if (sourceProfileUrl) await upsertExtraField(DATA_ITEM_CANDIDATE, candidateId, 'source_profile_url', sourceProfileUrl);
   if (sourceCandidateId) await upsertExtraField(DATA_ITEM_CANDIDATE, candidateId, 'source_candidate_id', sourceCandidateId);
+  if (extraFields && typeof extraFields === 'object') {
+    for (const [key, value] of Object.entries(extraFields)) {
+      if (value !== undefined && value !== null && value !== '') {
+        await upsertExtraField(DATA_ITEM_CANDIDATE, candidateId, key, String(value));
+      }
+    }
+  }
 
   await logAudit(req.actor, 'create', 'candidate', candidateId, req.body);
   res.status(201).json({ candidateId, record_id: recordId('CAND', candidateId) });
