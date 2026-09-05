@@ -182,21 +182,40 @@ router.patch('/submissions/:id', async (req, res) => {
     await pool.execute('UPDATE candidate_joborder SET status = :s, date_modified = NOW() WHERE candidate_joborder_id = :id', { s: statusId, id });
   }
 
-  if (nextAction !== undefined || nextActionDate !== undefined || ownerId !== undefined || notes !== undefined) {
+  const hasNextAction = 'nextAction' in req.body;
+  const hasNextActionDate = 'nextActionDate' in req.body;
+  const hasOwnerId = 'ownerId' in req.body;
+  const hasNotes = 'notes' in req.body;
+
+  if (hasNextAction || hasNextActionDate || hasOwnerId || hasNotes) {
+    // A field explicitly set to null must clear it; COALESCE cannot express
+    // that (it would silently keep the old value), so fields omitted from
+    // the body fall back to the current row instead of relying on COALESCE.
+    const [existingMeta] = await pool.execute(
+      'SELECT next_action, next_action_date, owner_id, notes FROM tb_submission_meta WHERE candidate_joborder_id = :id',
+      { id }
+    );
+    const old = existingMeta[0] || {};
+
+    const nextActionVal = hasNextAction ? nextAction ?? null : old.next_action ?? null;
+    const nextActionDateVal = hasNextActionDate ? nextActionDate ?? null : old.next_action_date ?? null;
+    const ownerIdVal = hasOwnerId ? ownerId ?? null : old.owner_id ?? null;
+    const notesVal = hasNotes ? notes ?? null : old.notes ?? null;
+
     await pool.execute(
       `INSERT INTO tb_submission_meta (candidate_joborder_id, next_action, next_action_date, owner_id, notes)
        VALUES (:id, :nextAction, :nextActionDate, :ownerId, :notes)
        ON DUPLICATE KEY UPDATE
-         next_action = COALESCE(:nextAction, next_action),
-         next_action_date = COALESCE(:nextActionDate, next_action_date),
-         owner_id = COALESCE(:ownerId, owner_id),
-         notes = COALESCE(:notes, notes)`,
+         next_action = :nextAction,
+         next_action_date = :nextActionDate,
+         owner_id = :ownerId,
+         notes = :notes`,
       {
         id,
-        nextAction: nextAction ?? null,
-        nextActionDate: nextActionDate ?? null,
-        ownerId: ownerId ?? null,
-        notes: notes ?? null,
+        nextAction: nextActionVal,
+        nextActionDate: nextActionDateVal,
+        ownerId: ownerIdVal,
+        notes: notesVal,
       }
     );
   }
