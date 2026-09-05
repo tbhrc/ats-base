@@ -6,7 +6,12 @@
 
 START TRANSACTION;
 
--- Add the new stage rows first (ids chosen to leave room between them).
+-- Add the new stage rows first (ids chosen to leave room between them, and
+-- deliberately NOT reusing any of the twelve legacy default ids being
+-- removed below -- reusing id 100 here bit us live: the ON DUPLICATE KEY
+-- UPDATE overwrote the old "No Contact" row's content, but the later
+-- DELETE ... WHERE id IN (..., 100, ...) then removed that same row again
+-- since it matched by id, silently dropping "Client Submission").
 INSERT INTO `candidate_joborder_status`
   (`candidate_joborder_status_id`, `short_description`, `can_be_scheduled`, `triggers_email`, `is_enabled`)
 VALUES
@@ -19,7 +24,7 @@ VALUES
   (70, 'Screening Interview', 1, 0, 1),
   (80, 'Technical Test', 0, 0, 1),
   (90, 'Shortlisted', 0, 0, 1),
-  (100, 'Client Submission', 0, 0, 1),
+  (105, 'Client Submission', 0, 0, 1),
   (110, 'Client Interview', 1, 0, 1),
   (120, 'Not Selected', 0, 0, 1),
   (130, 'Offered', 0, 0, 1),
@@ -37,7 +42,7 @@ ON DUPLICATE KEY UPDATE
 UPDATE `candidate_joborder` SET `status` = 10  WHERE `status` IN (0, 100);      -- No Status / No Contact -> New Candidates
 UPDATE `candidate_joborder` SET `status` = 30  WHERE `status` IN (200, 250);     -- Contacted / Responded -> Longlist/Questionnaire
 UPDATE `candidate_joborder` SET `status` = 90  WHERE `status` = 300;             -- Qualifying -> Shortlisted
-UPDATE `candidate_joborder` SET `status` = 100 WHERE `status` = 400;             -- Submitted -> Client Submission
+UPDATE `candidate_joborder` SET `status` = 105 WHERE `status` = 400;             -- Submitted -> Client Submission
 UPDATE `candidate_joborder` SET `status` = 110 WHERE `status` = 500;             -- Interviewing -> Client Interview
 UPDATE `candidate_joborder` SET `status` = 130 WHERE `status` = 600;             -- Offered -> Offered
 UPDATE `candidate_joborder` SET `status` = 120 WHERE `status` IN (650, 675, 700);-- Not in Consideration / Declined -> Not Selected
