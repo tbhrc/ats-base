@@ -1,0 +1,15 @@
+{
+  "name": "tb-ats-adapter",
+  "version": "0.1.0",
+  "description": "Thin authenticated agent read/write adapter over the Talent Bridge OpenCATS deployment. Never exposes raw SQL to callers -- every route is a fixed, parameterized, scoped operation. See tbhrc/recruitment#16 Section 11.",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mysql2": "^3.11.0"
+  }
+}
